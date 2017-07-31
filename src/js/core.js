@@ -49,7 +49,7 @@
             editor = options.editor;
             options.editor = null;
         }
-        this.options = $.extend(true, {}, defaults, options);
+        this.options = Object.assign({}, options, defaults ); //
         this.options.editor = editor;
         if (options) {
             options.editor = editor; // Restore original object definition
@@ -88,7 +88,7 @@
      */
 
     Core.prototype.init = function () {
-        this.$el.addClass('medium-editor-insert-plugin');
+        this.el.classList.add('medium-editor-insert-plugin');
 
         if (typeof this.options.addons !== 'object' || Object.keys(this.options.addons).length === 0) {
             this.disable();
@@ -108,17 +108,46 @@
     Core.prototype.events = function () {
         var that = this;
 
-        this.$el
-            .on('dragover drop', function (e) {
+        this.el
+            .addEventListener('dragover drop', function (e) {
                 e.preventDefault();
-            })
-            .on('keyup click', $.proxy(this, 'toggleButtons'))
-            .on('selectstart mousedown', '.medium-insert, .medium-insert-buttons', $.proxy(this, 'disableSelection'))
-            .on('click', '.medium-insert-buttons-show', $.proxy(this, 'toggleAddons'))
-            .on('click', '.medium-insert-action', $.proxy(this, 'addonAction'))
-            .on('paste', '.medium-insert-caption-placeholder', function (e) {
-                $.proxy(that, 'removeCaptionPlaceholder')($(e.target));
             });
+
+        function onClickTarget(target, callback) {
+            return function(event) {            
+                if (Array.prototype.slice.call(this.querySelectorAll(target)).filter((a)  => {  
+                    if (a == event.target) {
+                        return true; 
+                    }
+                    let recurseToChilds = function (r) {
+                        if (r.childNodes.length) {
+                            for (let e of r.childNodes) {
+                                if (e == event.target) {
+                                    return true;
+                                }
+                                recurseToChilds(e);
+                            }
+                        }
+                        return false;
+                    }
+                    return recurseToChilds(a);
+                
+                }).length) {
+                    let e2 = Object.assign({}, event);
+                    e2.currentTarget = this.querySelectorAll(target);
+                    callback(e2);
+                }
+            };
+        }
+        this.el.addEventListener('keyup', $.proxy(this, 'toggleButtons'));
+        this.el.addEventListener('click', $.proxy(this, 'toggleButtons'));
+        this.el.addEventListener('selectstart', onClickTarget('.medium-insert, .medium-insert-buttons', $.proxy(this, 'disableSelection')));
+        this.el.addEventListener('mousedown', onClickTarget('.medium-insert, .medium-insert-buttons', $.proxy(this, 'disableSelection')));
+        this.el.addEventListener('click', onClickTarget('.medium-insert-buttons-show', $.proxy(this, 'toggleAddons')));
+        this.el.addEventListener('click', onClickTarget('.medium-insert-action', $.proxy(this, 'addonAction')));
+        this.el.addEventListener('paste', onClickTarget('.medium-insert-caption-placeholder', function (e) {
+                $.proxy(that, 'removeCaptionPlaceholder')($(e.target));
+            }));
 
         $(window).on('resize', $.proxy(this, 'positionButtons', null));
     };
