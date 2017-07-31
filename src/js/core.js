@@ -114,8 +114,8 @@
             });
 
         function onClickTarget(target, callback) {
-            return function(event) {            
-                if (Array.prototype.slice.call(this.querySelectorAll(target)).filter((a)  => {  
+            return function(event) { 
+                let res = Array.prototype.slice.call(this.querySelectorAll(target)).filter((a)  => {  
                     if (a == event.target) {
                         return true; 
                     }
@@ -132,21 +132,22 @@
                     }
                     return recurseToChilds(a);
                 
-                }).length) {
+                });
+                if (res.length) {
                     let e2 = Object.assign({}, event);
-                    e2.currentTarget = this.querySelectorAll(target);
+                    e2.currentTarget = res[0];
                     callback(e2);
                 }
             };
         }
         this.el.addEventListener('keyup', $.proxy(this, 'toggleButtons'));
         this.el.addEventListener('click', $.proxy(this, 'toggleButtons'));
-        this.el.addEventListener('selectstart', onClickTarget('.medium-insert, .medium-insert-buttons', $.proxy(this, 'disableSelection')));
-        this.el.addEventListener('mousedown', onClickTarget('.medium-insert, .medium-insert-buttons', $.proxy(this, 'disableSelection')));
-        this.el.addEventListener('click', onClickTarget('.medium-insert-buttons-show', $.proxy(this, 'toggleAddons')));
-        this.el.addEventListener('click', onClickTarget('.medium-insert-action', $.proxy(this, 'addonAction')));
+        this.el.addEventListener('selectstart', onClickTarget('.medium-insert, .medium-insert-buttons', (e) => { return this.disableSelection.apply(this, [e]) } ));
+        this.el.addEventListener('mousedown', onClickTarget('.medium-insert, .medium-insert-buttons', (e) => { return this.disableSelection.apply(this, [e]) }));
+        this.el.addEventListener('click', onClickTarget('.medium-insert-buttons-show', (e) => { return this.toggleAddons.apply(this, [e]) } ));
+        this.el.addEventListener('click', onClickTarget('.medium-insert-action', (e) => { return this.addonAction.apply(this, [e]) } ));
         this.el.addEventListener('paste', onClickTarget('.medium-insert-caption-placeholder', function (e) {
-                $.proxy(that, 'removeCaptionPlaceholder')($(e.target));
+                that.removeCaptionPlaceholder.apply(that, [e])($(e.target));
             }));
 
         $(window).on('resize', $.proxy(this, 'positionButtons', null));
@@ -573,6 +574,7 @@
      */
 
     Core.prototype.addonAction = function (e) {
+        console.log(e);
         var $a = $(e.currentTarget),
             addon = $a.data('addon'),
             action = $a.data('action');
