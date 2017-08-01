@@ -140,17 +140,17 @@
                 }
             };
         }
-        this.el.addEventListener('keyup', $.proxy(this, 'toggleButtons'));
-        this.el.addEventListener('click', $.proxy(this, 'toggleButtons'));
+        this.el.addEventListener('keyup', (e) => {this.toggleButtons.apply(this, [e] )});
+        this.el.addEventListener('click', (e) => {this.toggleButtons.apply(this, [e] )});
         this.el.addEventListener('selectstart', onClickTarget('.medium-insert, .medium-insert-buttons', (e) => { return this.disableSelection.apply(this, [e]) } ));
         this.el.addEventListener('mousedown', onClickTarget('.medium-insert, .medium-insert-buttons', (e) => { return this.disableSelection.apply(this, [e]) }));
         this.el.addEventListener('click', onClickTarget('.medium-insert-buttons-show', (e) => { return this.toggleAddons.apply(this, [e]) } ));
         this.el.addEventListener('click', onClickTarget('.medium-insert-action', (e) => { return this.addonAction.apply(this, [e]) } ));
-        this.el.addEventListener('paste', onClickTarget('.medium-insert-caption-placeholder', function (e) {
-                that.removeCaptionPlaceholder.apply(that, [e])($(e.target));
-            }));
+        
 
-        $(window).on('resize', $.proxy(this, 'positionButtons', null));
+        window.addEventListener('resize', (e) => { 
+            this.positionButtons.apply(this, [null])
+        });
     };
 
     /**
@@ -172,21 +172,32 @@
     Core.prototype.editorSerialize = function () {
         var data = this._serialize();
 
-        $.each(data, function (key) {
-            var $data = $('<div />').html(data[key].value);
+        for( let key in data) {
 
-            $data.find('.medium-insert-buttons').remove();
-            $data.find('.medium-insert-active').removeClass('medium-insert-active');
+            var $data = document.createElement('div');
+            $data.innerHTML = data[key].value;
+
+            let button = $data.querySelector('.medium-insert-buttons');
+            if (button) {
+                button.remove();
+            }
+
+            let active = $data.querySelector('.medium-insert-active');
+            
+            if(active) {
+                active.classList.remove('medium-insert-active');
+            }
 
             // Restore original embed code from embed wrapper attribute value.
-            $data.find('[data-embed-code]').each(function () {
-                var $this = $(this),
-                    html = $('<div />').html($this.attr('data-embed-code')).text();
-                $this.html(html);
+            Array.prototype.slice.call($data.querySelectorAll('[data-embed-code]')).forEach(function(element) {
+                html = document.createElement('div');
+                html.innerHTML = element.attributes['data-embed-code'];
+                html = html.innerText;
+                element.innerHTML = html;
             });
 
-            data[key].value = $data.html();
-        });
+            data[key].value = $data.innerHTML;
+        }
 
         return data;
     };
@@ -198,11 +209,11 @@
      */
 
     Core.prototype.editorDestroy = function () {
-        $.each(this.elements, function (key, el) {
-            if ($(el).data('plugin_' + pluginName) instanceof Core) {
-                $(el).data('plugin_' + pluginName).disable();
+        for (let el of this.elements) {
+            if (el['plugin_' + pluginName] instanceof Core) {
+                el['plugin_' + pluginName].disable();
             }
-        });
+        }
 
         this._destroy();
     };
@@ -215,12 +226,11 @@
 
     Core.prototype.editorSetup = function () {
         this._setup();
-
-        $.each(this.elements, function (key, el) {
-            if ($(el).data('plugin_' + pluginName) instanceof Core) {
-                $(el).data('plugin_' + pluginName).enable();
+        for (let el of this.elements) {
+             if (el['plugin_' + pluginName] instanceof Core) {
+                el['plugin_' + pluginName].enable();
             }
-        });
+        }
     };
 
     /**
@@ -230,8 +240,13 @@
      */
 
     Core.prototype.editorUpdatePlaceholder = function (el, dontShow) {
-        var contents = $(el).children()
-            .not('.medium-insert-buttons').contents();
+       
+        let contents = Array.prototype.slice.call(el.children).filter(function (element) {
+            return !element.classList.contains('medium-insert-buttons');
+        }).map(function (element) {
+            return Array.prototype.slice.call(element.childNodes);
+        });
+        contents = [].concat.apply([],contents);
 
         if (!dontShow && contents.length === 1 && contents[0].nodeName.toLowerCase() === 'br') {
             this.showPlaceholder(el);
@@ -272,7 +287,7 @@
     Core.prototype.disable = function () {
         this.options.enabled = false;
 
-        this.$el.find('.medium-insert-buttons').addClass('hide');
+        this.el.querySelector('.medium-insert-buttons').classList.add('hide');
     };
 
     /**
@@ -284,7 +299,7 @@
     Core.prototype.enable = function () {
         this.options.enabled = true;
 
-        this.$el.find('.medium-insert-buttons').removeClass('hide');
+        this.el.querySelector('.medium-insert-buttons').classList.remove('hide');
     };
 
     /**
@@ -294,9 +309,8 @@
      */
 
     Core.prototype.disableSelection = function (e) {
-        var $el = $(e.target);
-
-        if ($el.is('img') === false || $el.hasClass('medium-insert-buttons-show')) {
+        
+        if (e.target.nodeName === 'IMG' || e.target.classList.contains('medium-insert-buttons-show')) {
             e.preventDefault();
         }
     };
@@ -314,17 +328,17 @@
             return;
         }
 
-        $.each(this.options.addons, function (addon, options) {
+        for(let addon in this.options.addons) {
+            let options = this.options.addons[addon];
             var addonName = pluginName + ucfirst(addon);
 
             if (options === false) {
                 delete that.options.addons[addon];
                 return;
             }
-
             that.$el[addonName](options);
-            that.options.addons[addon] = that.$el.data('plugin_' + addonName).options;
-        });
+            that.options.addons[addon] = that.el['plugin_' + addonName].options;
+        };
     };
 
     /**
@@ -341,32 +355,34 @@
             return;
         }
 
-        if (this.$el.html().length === 0) {
-            this.$el.html(this.templates['src/js/templates/core-empty-line.hbs']().trim());
+        if (this.el.innerHTML.length === 0) {
+            this.el.innerHTML = this.templates['src/js/templates/core-empty-line.hbs']().trim();
         }
 
         // Fix #29
         // Wrap content text in <p></p> to avoid Firefox problems
-        $text = this.$el
-            .contents()
-            .filter(function () {
-                return (this.nodeName === '#text' && $.trim($(this).text()) !== '') || this.nodeName.toLowerCase() === 'br';
-            });
+        let text = this.el.childNodes;
 
-        $text.each(function () {
-            $(this).wrap('<p />');
+        text = [].concat.apply([],text);
+        text = text.filter(function (element) {
+            return (element.nodeName === '#text' && element.textContent && element.textContent.trim() !== '') || element.nodeName.toLowerCase() === 'br';
+        });
 
+        text.forEach(function (element) {
+            let p = document.createElement('p');
+            p.innerHTML = element.textContent;
+            element.parentNode.replaceChild(p, element);
             // Fix #145
             // Move caret at the end of the element that's being wrapped
-            that.moveCaret($(this).parent(), $(this).text().length);
+            // that.moveCaret(element.parentElement, element.textContent.length);
         });
 
         this.addButtons();
 
-        $buttons = this.$el.find('.medium-insert-buttons');
-        $lastEl = $buttons.prev();
-        if ($lastEl.attr('class') && $lastEl.attr('class').match(/medium\-insert(?!\-active)/)) {
-            $buttons.before(this.templates['src/js/templates/core-empty-line.hbs']().trim());
+        $buttons = this.el.querySelector('.medium-insert-buttons');
+        $lastEl = $buttons.previousSibling.previousSibling;
+        if ($lastEl.attributes['class'] && $lastEl.attributes['class'].match(/medium\-insert(?!\-active)/)) {
+            $buttons.parentElement.insertBefore(this.templates['src/js/templates/core-empty-line.hbs']().trim());
         }
     };
 
@@ -393,8 +409,10 @@
      */
 
     Core.prototype.addButtons = function () {
-        if (this.$el.find('.medium-insert-buttons').length === 0) {
-            this.$el.append(this.getButtons());
+        if (!this.el.querySelector('.medium-insert-buttons')) {
+            let div = document.createElement('div');
+            div.innerHTML = this.getButtons();
+            this.el.appendChild(div.childNodes[0]);
         }
     };
 
@@ -405,7 +423,7 @@
      */
 
     Core.prototype.toggleButtons = function (e) {
-        var $el = $(e.target),
+        var $el = e.target,
             selection = window.getSelection(),
             that = this,
             range, $current, $p, activeAddon;
@@ -418,41 +436,70 @@
             $current = $el;
         } else {
             range = selection.getRangeAt(0);
-            $current = $(range.commonAncestorContainer);
+            $current = range.commonAncestorContainer.nodeName === "#text" ? range.commonAncestorContainer.parentElement : range.commonAncestorContainer;
         }
 
         // When user clicks on  editor's placeholder in FF, $current el is editor itself, not the first paragraph as it should
-        if ($current.hasClass('medium-editor-insert-plugin')) {
-            $current = $current.find('p:first');
+        if ($current.classList.contains('medium-editor-insert-plugin')) {
+            $current = $current.querySelector('p:first-of-type');
         }
 
-        $p = $current.is('p') ? $current : $current.closest('p');
+        
+        let closest = function(element, match) {
+            if (element.nodeName === match) {
+                return element;
+            }
+
+            if (!element.parentElement) {
+                return null;
+            }
+
+            return closest(element.parentElement, match);
+        };
+
+        let closestClass = function(element, match) {
+            if (element.classList.contains(match)) {
+                return element;
+            }
+
+            if (!element.parentElement) {
+                return null;
+            }
+
+            return closestClass(element.parentElement, match);
+        };
+
+        $p = closest($current, 'P');
 
         this.clean();
 
-        if ($el.hasClass('medium-editor-placeholder') === false && $el.closest('.medium-insert-buttons').length === 0 && $current.closest('.medium-insert-buttons').length === 0) {
+        if ($el.classList.contains('medium-editor-placeholder') === false && !closestClass($el, 'medium-insert-buttons') && !closestClass($current, 'medium-insert-buttons')) {
 
-            this.$el.find('.medium-insert-active').removeClass('medium-insert-active');
+            let active = this.el.querySelector('.medium-insert-active');
 
-            $.each(this.options.addons, function (addon) {
-                if ($el.closest('.medium-insert-' + addon).length) {
+            if (active) {
+                active.classList.remove('medium-insert-active');
+            }
+
+            for (let addon in this.options.addons) {
+                if (closestClass($el, '.medium-insert-' + addon)) {
                     $current = $el;
                 }
 
-                if ($current.closest('.medium-insert-' + addon).length) {
-                    $p = $current.closest('.medium-insert-' + addon);
+                if (closestClass($current, '.medium-insert-' + addon)) {
+                    $p = closestClass($current, '.medium-insert-' + addon);
                     activeAddon = addon;
                     return;
                 }
-            });
+            }
 
-            if ($p.length && (($p.text().trim() === '' && !activeAddon) || activeAddon === 'images')) {
-                $p.addClass('medium-insert-active');
+            if ($p && (($p.innerText.trim() === '' && !activeAddon) || activeAddon === 'images')) {
+                $p.classList.add('medium-insert-active');
 
                 if (activeAddon === 'images') {
-                    this.$el.find('.medium-insert-buttons').attr('data-active-addon', activeAddon);
+                    this.el.querySelector('.medium-insert-buttons').attributes['data-active-addon'] = activeAddon;
                 } else {
-                    this.$el.find('.medium-insert-buttons').removeAttr('data-active-addon');
+                    delete this.el.querySelector('.medium-insert-buttons').attributes['data-active-addon'];
                 }
 
                 // If buttons are displayed on addon paragraph, wait 100ms for possible captions to display
@@ -474,14 +521,14 @@
      */
 
     Core.prototype.showButtons = function (activeAddon) {
-        var $buttons = this.$el.find('.medium-insert-buttons');
+        var $buttons = this.el.querySelector('.medium-insert-buttons');
 
-        $buttons.show();
-        $buttons.find('li').show();
+        $buttons.style.display = '';
+        $buttons.querySelector('li').style.display  = '';
 
         if (activeAddon) {
-            $buttons.find('li').hide();
-            $buttons.find('button[data-addon="' + activeAddon + '"]').parent().show();
+            $buttons.querySelector('li').style.display = 'none';
+            $buttons.querySelector('button[data-addon="' + activeAddon + '"]').parentElement.style.display = '';
         }
     };
 
@@ -493,11 +540,11 @@
      */
 
     Core.prototype.hideButtons = function ($el) {
-        $el = $el || this.$el;
+        $el = $el || this.el;
 
-        $el.find('.medium-insert-buttons').hide();
-        $el.find('.medium-insert-buttons-addons').hide();
-        $el.find('.medium-insert-buttons-show').removeClass('medium-insert-buttons-rotate');
+        $el.querySelector('.medium-insert-buttons').style.display = 'none';
+        $el.querySelector('.medium-insert-buttons-addons').style.display = 'none';
+        $el.querySelector('.medium-insert-buttons-show').classList.remove('medium-insert-buttons-rotate');
     };
 
     /**
@@ -508,34 +555,38 @@
      */
 
     Core.prototype.positionButtons = function (activeAddon) {
-        var $buttons = this.$el.find('.medium-insert-buttons'),
-            $p = this.$el.find('.medium-insert-active'),
-            $lastCaption = $p.hasClass('medium-insert-images-grid') ? [] : $p.find('figure:last figcaption'),
-            elementsContainer = this.getEditor() ? this.getEditor().options.elementsContainer : $('body').get(0),
+        var $buttons = this.el.querySelector('.medium-insert-buttons'),
+            $p = this.el.querySelector('.medium-insert-active'),
+            $lastCaption = $p.classList.contains('medium-insert-images-grid') ? [] : $p.querySelector('figure:last-of-type figcaption'),
+            elementsContainer = this.getEditor() ? this.getEditor().options.elementsContainer : document.body,
             elementsContainerAbsolute = ['absolute', 'fixed'].indexOf(window.getComputedStyle(elementsContainer).getPropertyValue('position')) > -1,
             position = {};
 
-        if ($p.length) {
-            position.left = $p.position().left;
-            position.top = $p.position().top;
 
+        if ($p) {
+            console.log('kk');
+            position.left = this.el.getBoundingClientRect().left;
+            position.top = $p.getBoundingClientRect().top + document.body.scrollTop;
+            
             if (activeAddon) {
-                position.left += $p.width() - $buttons.find('.medium-insert-buttons-show').width() - 10;
-                position.top += $p.height() - 20 + ($lastCaption.length ? -$lastCaption.height() - parseInt($lastCaption.css('margin-top'), 10) : 10);
+                console.log('ici');
+                position.left += $p.getBoundingClientRect().width - $buttons.querySelector('.medium-insert-buttons-show').getBoundingClientRect().width - 10;
+                position.top += $p.getBoundingClientRect().height - 20 + ($lastCaption ? -$lastCaption.getBoundingClientRect().height - parseInt($lastCaption.style.marginTop, 10) : 10);
             } else {
-                position.left += -parseInt($buttons.find('.medium-insert-buttons-addons').css('left'), 10) - parseInt($buttons.find('.medium-insert-buttons-addons button:first').css('margin-left'), 10);
-                position.top += parseInt($p.css('margin-top'), 10);
+                position.left -= 40;
             }
 
             if (elementsContainerAbsolute) {
                 position.top += elementsContainer.scrollTop;
             }
 
-            if (this.$el.hasClass('medium-editor-placeholder') === false && position.left < 0) {
-                position.left = $p.position().left;
+            if (this.el.classList.contains('medium-editor-placeholder') === false && position.left < 0) {
+                position.left = $p.getBoundingClientRect().left;
             }
 
-            $buttons.css(position);
+            for (let p in position) {
+                $buttons.style[p] = position[p] + 'px';
+            };
         }
     };
 
@@ -546,13 +597,21 @@
      */
 
     Core.prototype.toggleAddons = function () {
-        if (this.$el.find('.medium-insert-buttons').attr('data-active-addon') === 'images') {
-            this.$el.find('.medium-insert-buttons').find('button[data-addon="images"]').click();
+        if (this.el.querySelector('.medium-insert-buttons').attributes['data-active-addon'] === 'images') {
+            this.el.querySelector('.medium-insert-buttons').querySelector('button[data-addon="images"]').click();
             return;
         }
 
-        this.$el.find('.medium-insert-buttons-addons').fadeToggle();
-        this.$el.find('.medium-insert-buttons-show').toggleClass('medium-insert-buttons-rotate');
+        let addons = this.el.querySelector('.medium-insert-buttons-addons');
+
+        addons.style.display = "inherit";
+        if (addons.style.opacity == 1) {
+            addons.style.opacity = 0;
+        } else {
+            addons.style.opacity = 1;
+        }
+
+        this.el.querySelector('.medium-insert-buttons-show').classList.toggle('medium-insert-buttons-rotate');
     };
 
     /**
@@ -562,8 +621,8 @@
      */
 
     Core.prototype.hideAddons = function () {
-        this.$el.find('.medium-insert-buttons-addons').hide();
-        this.$el.find('.medium-insert-buttons-show').removeClass('medium-insert-buttons-rotate');
+        this.el.querySelector('.medium-insert-buttons-addons').style.display = "none";
+        this.el.querySelector('.medium-insert-buttons-show').classList.remove('medium-insert-buttons-rotate');
     };
 
     /**
@@ -574,12 +633,11 @@
      */
 
     Core.prototype.addonAction = function (e) {
-        console.log(e);
-        var $a = $(e.currentTarget),
-            addon = $a.data('addon'),
-            action = $a.data('action');
+        var $a = e.currentTarget,
+            addon = $a['addon'],
+            action = $a['action'];
 
-        this.$el.data('plugin_' + pluginName + ucfirst(addon))[action]();
+        this.el['plugin_' + pluginName + ucfirst(addon)][action]();
     };
 
     /**
@@ -677,14 +735,13 @@
                 textareaId = $(that).attr('medium-editor-textarea-id');
                 that = $(that).siblings('[medium-editor-textarea-id="' + textareaId + '"]').get(0);
             }
-
-            if (!$.data(that, 'plugin_' + pluginName)) {
+            if (!that['plugin_' + pluginName]) {
                 // Plugin initialization
-                $.data(that, 'plugin_' + pluginName, new Core(that, options));
-                $.data(that, 'plugin_' + pluginName).init();
-            } else if (typeof options === 'string' && $.data(that, 'plugin_' + pluginName)[options]) {
+                that['plugin_' + pluginName] = new Core(that, options)
+                that['plugin_' + pluginName].init();
+            } else if (typeof options === 'string' && that['plugin_' + pluginName][options]) {
                 // Method call
-                $.data(that, 'plugin_' + pluginName)[options]();
+                that['plugin_' + pluginName][options]();
             }
         });
     };

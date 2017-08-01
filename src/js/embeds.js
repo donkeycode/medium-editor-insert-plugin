@@ -58,7 +58,7 @@
         this.el = el;
         this.$el = $(el);
         this.templates = window.MediumInsert.Templates;
-        this.core = this.$el.data('plugin_' + pluginName);
+        this.core = this.el['plugin_' + pluginName];
 
         this.options = $.extend(true, {}, defaults, options);
 
@@ -739,8 +739,8 @@
 
     $.fn[pluginName + addonName] = function (options) {
         return this.each(function () {
-            if (!$.data(this, 'plugin_' + pluginName + addonName)) {
-                $.data(this, 'plugin_' + pluginName + addonName, new Embeds(this, options));
+            if (!this[ 'plugin_' + pluginName + addonName]) {
+                this[ 'plugin_' + pluginName + addonName] =  new Embeds(this, options);
             }
         });
     };
