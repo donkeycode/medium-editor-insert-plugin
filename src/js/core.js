@@ -1,4 +1,4 @@
-;(function ($, window, document, undefined) {
+;(function (window, document) {
 
     'use strict';
 
@@ -9,7 +9,7 @@
             enabled: true,
             addons: {
                 images: true, // boolean or object containing configuration
-                embeds: true
+                // embeds: false
             }
         };
 
@@ -39,7 +39,7 @@
         var editor;
 
         this.el = el;
-        this.$el = $(el);
+        this.$el = el;
         this.templates = window.MediumInsert.Templates;
 
         if (options) {
@@ -250,7 +250,7 @@
 
         if (!dontShow && contents.length === 1 && contents[0].nodeName.toLowerCase() === 'br') {
             this.showPlaceholder(el);
-            this.base._hideInsertButtons($(el));
+            this.base._hideInsertButtons(el);
         } else {
             this.hidePlaceholder(el);
         }
@@ -286,8 +286,9 @@
 
     Core.prototype.disable = function () {
         this.options.enabled = false;
-
-        this.el.querySelector('.medium-insert-buttons').classList.add('hide');
+        if(this.el.querySelector('.medium-insert-buttons')) {
+            this.el.querySelector('.medium-insert-buttons').classList.add('hide');
+        }
     };
 
     /**
@@ -310,7 +311,7 @@
 
     Core.prototype.disableSelection = function (e) {
         
-        if (e.target.nodeName === 'IMG' || e.target.classList.contains('medium-insert-buttons-show')) {
+        if (e.target && (e.target.nodeName === 'IMG' || e.target.classList.contains('medium-insert-buttons-show'))) {
             e.preventDefault();
         }
     };
@@ -336,7 +337,8 @@
                 delete that.options.addons[addon];
                 return;
             }
-            that.$el[addonName](options);
+
+            window[addonName](that.el, options);
             that.options.addons[addon] = that.el['plugin_' + addonName].options;
         };
     };
@@ -482,14 +484,12 @@
             }
 
             for (let addon in this.options.addons) {
-                if (closestClass($el, '.medium-insert-' + addon)) {
+                if (closestClass($el, 'medium-insert-' + addon)) {
                     $current = $el;
                 }
-
-                if (closestClass($current, '.medium-insert-' + addon)) {
-                    $p = closestClass($current, '.medium-insert-' + addon);
+                if (closestClass($current, 'medium-insert-' + addon)) {
+                    $p = closestClass($current, 'medium-insert-' + addon);
                     activeAddon = addon;
-                    return;
                 }
             }
 
@@ -564,12 +564,10 @@
 
 
         if ($p) {
-            console.log('kk');
             position.left = this.el.getBoundingClientRect().left;
             position.top = $p.getBoundingClientRect().top + document.body.scrollTop;
             
             if (activeAddon) {
-                console.log('ici');
                 position.left += $p.getBoundingClientRect().width - $buttons.querySelector('.medium-insert-buttons-show').getBoundingClientRect().width - 10;
                 position.top += $p.getBoundingClientRect().height - 20 + ($lastCaption ? -$lastCaption.getBoundingClientRect().height - parseInt($lastCaption.style.marginTop, 10) : 10);
             } else {
@@ -634,9 +632,8 @@
 
     Core.prototype.addonAction = function (e) {
         var $a = e.currentTarget,
-            addon = $a['addon'],
-            action = $a['action'];
-
+            addon = $a.attributes['data-addon'].value,
+            action = $a.attributes['data-action'].value;
         this.el['plugin_' + pluginName + ucfirst(addon)][action]();
     };
 
@@ -677,12 +674,14 @@
      */
 
     Core.prototype.addCaption = function ($el, placeholder) {
-        var $caption = $el.find('figcaption');
+        var $caption = $el.querySelector('figcaption');
+        if (!$caption) {
 
-        if ($caption.length === 0) {
-            $el.append(this.templates['src/js/templates/core-caption.hbs']({
+            let div = document.createElement('div');
+            div.innerHTML = this.templates['src/js/templates/core-caption.hbs']({
                 placeholder: placeholder
-            }));
+            });
+            $el.appendChild(div.childNodes[0]);
         }
     };
 
@@ -694,15 +693,17 @@
      */
 
     Core.prototype.removeCaptions = function ($ignore) {
-        var $captions = this.$el.find('figcaption');
+        var $captions = Array.prototype.slice.call(this.el.querySelectorAll('figcaption'));
 
         if ($ignore) {
-            $captions = $captions.not($ignore);
+            $captions = $captions.filter(function(element) {
+                return element != $ignore;
+            });
         }
 
-        $captions.each(function () {
-            if ($(this).hasClass('medium-insert-caption-placeholder') || $(this).text().trim() === '') {
-                $(this).remove();
+        $captions.forEach(function (element) {
+            if (element.classList.contains('medium-insert-caption-placeholder') || element.innerText.trim() === '') {
+                element.remove();
             }
         });
     };
@@ -715,35 +716,32 @@
      */
 
     Core.prototype.removeCaptionPlaceholder = function ($el) {
-        var $caption = $el.is('figcaption') ? $el : $el.find('figcaption');
+        var $caption = $el.nodeName == 'FIGCAPTION' ? $el : $el.querySelector('figcaption');
 
-        if ($caption.length) {
-            $caption
-                .removeClass('medium-insert-caption-placeholder')
-                .removeAttr('data-placeholder');
+        if ($caption) {
+            $caption.classList.remove('medium-insert-caption-placeholder');
+            delete $caption.attributes['data-placeholder'];
         }
     };
 
     /** Plugin initialization */
 
-    $.fn[pluginName] = function (options) {
-        return this.each(function () {
-            var that = this,
-                textareaId;
+    window.mediumInsert = function (node, options) {
+        var that = node,
+            textareaId;
 
-            if ($(that).is('textarea')) {
-                textareaId = $(that).attr('medium-editor-textarea-id');
-                that = $(that).siblings('[medium-editor-textarea-id="' + textareaId + '"]').get(0);
-            }
-            if (!that['plugin_' + pluginName]) {
-                // Plugin initialization
-                that['plugin_' + pluginName] = new Core(that, options)
-                that['plugin_' + pluginName].init();
-            } else if (typeof options === 'string' && that['plugin_' + pluginName][options]) {
-                // Method call
-                that['plugin_' + pluginName][options]();
-            }
-        });
+        if (that.nodeName === 'TEXTAREA') {
+            textareaId = that.attributes['medium-editor-textarea-id'];
+            that = document.querySelector('[medium-editor-textarea-id="' + textareaId + '"]');
+        }
+        if (!that['plugin_' + pluginName]) {
+            // Plugin initialization
+            that['plugin_' + pluginName] = new Core(that, options)
+            that['plugin_' + pluginName].init();
+        } else if (typeof options === 'string' && that['plugin_' + pluginName][options]) {
+            // Method call
+            that['plugin_' + pluginName][options]();
+        }
     };
 
-})(jQuery, window, document);
+})(window, document);

@@ -612,7 +612,7 @@
         $toolbar2 = $('.medium-insert-embeds-toolbar2');
 
         $toolbar.find('button').each(function () {
-            if ($embed.hasClass('medium-insert-embeds-' + $(this).data('action'))) {
+            if ($embed.hasClass('medium-insert-embeds-' + this['action'])) {
                 $(this).addClass('medium-editor-button-active');
                 active = true;
             }
@@ -697,19 +697,19 @@
         $li.siblings().find('.medium-editor-button-active').removeClass('medium-editor-button-active');
 
         $lis.find('button').each(function () {
-            var className = 'medium-insert-embeds-' + $(this).data('action');
+            var className = 'medium-insert-embeds-' + this['action'];
 
             if ($(this).hasClass('medium-editor-button-active')) {
                 $embed.addClass(className);
 
-                if (that.options.styles[$(this).data('action')].added) {
-                    that.options.styles[$(this).data('action')].added($embed);
+                if (that.options.styles[this['action']].added) {
+                    that.options.styles[this['action']].added($embed);
                 }
             } else {
                 $embed.removeClass(className);
 
-                if (that.options.styles[$(this).data('action')].removed) {
-                    that.options.styles[$(this).data('action')].removed($embed);
+                if (that.options.styles[this['action']].removed) {
+                    that.options.styles[this['action']].removed($embed);
                 }
             }
         });
@@ -726,7 +726,7 @@
 
     Embeds.prototype.toolbar2Action = function (e) {
         var $button = $(e.target).is('button') ? $(e.target) : $(e.target).closest('button'),
-            callback = this.options.actions[$button.data('action')].clicked;
+            callback = this.options.actions[$button['action']].clicked;
 
         if (callback) {
             callback(this.$el.find('.medium-insert-embeds-selected'));
