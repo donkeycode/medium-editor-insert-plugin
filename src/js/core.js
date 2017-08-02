@@ -115,7 +115,7 @@
 
         function onClickTarget(target, callback) {
             return function(event) { 
-                let res = Array.prototype.slice.call(this.querySelectorAll(target)).filter((a)  => {  
+                let res = Array.prototype.slice.call(this.querySelectorAll(target)).filter((a) => {  
                     if (a == event.target) {
                         return true; 
                     }

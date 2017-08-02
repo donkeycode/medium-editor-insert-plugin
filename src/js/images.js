@@ -196,7 +196,16 @@
 
     Images.prototype.add = function () {
         let active = this.el.querySelector('.medium-insert-active');
-        active.classList.add('encadree');
+        let div = document.createElement('div');
+        div.classList.add('encadre')
+        active.parentElement.insertBefore(div, active );
+        this.core.hideButtons();
+        let s = window.getSelection();
+        let r = document.createRange();
+        r.setStart(div, 0);
+        r.setEnd(div, 0);
+        s.removeAllRanges();
+        s.addRange(r);
     }
     //     var that = this,
     //         $file = $(this.templates['src/js/templates/images-fileupload.hbs']()),

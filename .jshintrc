@@ -4,7 +4,6 @@
     },
 
     "predef": {
-        "jQuery": false,
         "document": false,
         "window": false,
         "module": false,
@@ -27,7 +26,6 @@
         "require": false
     },
 
-    "jquery" : true,
     "browser" : true,
 
     "boss" : false,
