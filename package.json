@@ -36,7 +36,7 @@
   "dependencies": {
     "medium-editor": "^5.15.0",
     "handlebars": "~4.0.0",
-    "blueimp-file-upload": "~9.12.1"
+    "blueimp-file-upload": "~9.34.0"
   },
   "devDependencies": {
     "grunt": "~0.4.4",
