@@ -35,7 +35,7 @@
   ],
   "dependencies": {
     "medium-editor": "^5.15.0",
-    "handlebars": "~4.0.0",
+    "handlebars": "~4.7.7",
     "blueimp-file-upload": "~9.12.1"
   },
   "devDependencies": {
